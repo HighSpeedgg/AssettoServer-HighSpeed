@@ -145,7 +145,35 @@ function script.draw3D()
     end
 end
 
+local carModel = nil
+
+-- function script.update(dt)
+--     if carModel then
+--         local car = ac.getCar(0)
+--         if carModel then
+--                 carModel:setPosition(car.position)
+--                 carModel:setOrientation(car.look, car.up)
+
+--                 -- set the wheel nodes to the position and orientation of the car's wheels
+--                 local wheel_lf = carModel:findNodes('WHEEL_LF')
+--                 local wheel_rf = carModel:findNodes('WHEEL_RF')
+--                 local wheel_lr = carModel:findNodes('WHEEL_LR')
+--                 local wheel_rr = carModel:findNodes('WHEEL_RR')
+
+--                 ac.log(tostring(car.wheels[0]))
+--         else
+--             ac.log('Challenger model not found in carsRoot.')
+--         end
+--     else
+--         ac.log('carsRoot not found.')
+--     end
+-- end
+
 local UIToggle = debugInfoEnabled
+
+local carModel = nil
+local carPosition = vec3(0, 0, 0)
+local carRotation = vec3(0, 0, 0)
 
 ui.registerOnlineExtra(ui.Icons.Settings, "AI Debug",
     function() return true end,
@@ -153,6 +181,68 @@ ui.registerOnlineExtra(ui.Icons.Settings, "AI Debug",
         if ui.checkbox('Enable AI Debug', UIToggle) then
             UIToggle = not UIToggle
             debugInfoEnabled = UIToggle
+        end
+
+        if ui.button("Load Challenger") then
+
+            -- Find the dynamic root to attach the car to
+            local carRoot = ac.findNodes('dynamicRoot:yes')
+            
+            -- Load KN5 model from data.acd (assuming it's from car index 0)
+            local carIndex = 0
+            local kn5Filename = 'highspeed_challenger.kn5' -- or whatever the model name is
+
+            local car = ac.getCar(0)
+
+            web.loadRemoteAssets("https://cdn.highspeed.gg/highspeed_challenger.zip", function(error, filename) 
+                if error then
+                    ac.error('Failed to load car model: ' .. tostring(error))
+                    return
+                end
+
+                filename = filename .. "/highspeed_challenger/highspeed_challenger.kn5"
+
+                ac.log('Car model downloaded successfully: ' .. filename)
+
+                -- carsRoot:loadKN5Async(
+                --     {filename = filename},
+                --     function(err, loadedNode)
+                --         if not err then
+                --             print('Car model loaded successfully!')
+                --             local g_loadedCar = loadedNode
+
+                --             if g_loadedCar then
+                --                 ac.log(g_loadedCar:name() .. ' loaded successfully!')
+
+                --                 carModel = g_loadedCar
+                --             else
+                --                 ac.error('Model loaded but the node is nil.')
+                --             end
+                --         else
+                --             ac.error('Failed to load car model: '..tostring(err))
+                --         end
+                --     end
+                -- )
+
+                            -- Load from car data
+                carRoot:loadKN5Async({
+                    carIndex = carIndex,
+                    filename = filename
+                }, function(err, loadedNode)
+                    if not err and loadedNode then
+                        ac.log('Car model loaded successfully!')
+                        carModel = loadedNode
+                        -- Set initial position
+                        carModel:setPosition(car.position)
+                        carModel:setOrientation(car.look, car.up)
+                        carModel:setVirtualCarFlag(true)
+
+                        local data = ac.INIConfig.load('data.acd', 'carData')
+                    else
+                        ac.error('Failed to load car model: ' .. tostring(err))
+                    end
+                end)
+            end)
         end
     end,
     function() end,
